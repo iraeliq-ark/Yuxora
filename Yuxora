@@ -1,0 +1,400 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090d18">
+<title>Yuxora — Your World</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#090d18;--panel:#111827;--panel2:#182235;--line:#29354b;--text:#f4f7ff;--muted:#9aa8c0;--cyan:#00eaff;--pink:#ff168b;--purple:#852cff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+button,input,textarea{font:inherit}button{cursor:pointer;color:inherit}
+.hidden{display:none!important}
+header{position:sticky;top:0;z-index:5;background:#0b1020;border-bottom:1px solid var(--line);padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+.brand{font-size:25px;font-weight:900;letter-spacing:1px}.brand span{color:var(--cyan)}
+.layout{max-width:1100px;margin:auto;padding:18px;display:grid;grid-template-columns:190px minmax(0,1fr);gap:20px}
+nav button,.btn,.tab,.action{border:1px solid var(--line);border-radius:11px;background:var(--panel2);padding:10px 13px}
+nav button{display:block;width:100%;text-align:left;margin:5px 0;color:var(--muted)}
+nav button.active,.tab.active{color:var(--cyan);border-color:var(--cyan)}
+.panel,.post,.authbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:15px}
+.authscreen{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(ellipse at top left,#27114d,transparent 45%),var(--bg)}
+.authbox{width:100%;max-width:420px;padding:24px}
+.field,textarea{width:100%;background:#0a1120;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;margin:5px 0 12px}
+label{display:block;color:var(--muted);font-size:14px;margin-top:9px}
+.btn.primary{background:linear-gradient(120deg,var(--purple),var(--pink));border:0}
+.btn.cyan{background:var(--cyan);color:#00131a;border:0}
+.btn.full{width:100%}
+.muted{color:var(--muted)}.small{font-size:12px}
+.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}.wrap{flex-wrap:wrap}
+.avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--cyan);background:var(--panel2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.tabs{display:flex;gap:8px;overflow:auto;margin-bottom:14px}
+.tab{white-space:nowrap;color:var(--muted)}
+.post-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.post-media{width:100%;max-height:450px;object-fit:contain;background:#050914;border-radius:12px;margin-top:10px}
+video.post-media{height:auto}
+.post-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.action{padding:8px 10px;color:var(--muted)}
+.action.liked,.action.following{color:var(--cyan);border-color:var(--cyan)}
+.comment{padding:8px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.commentform{display:flex;gap:6px;margin-top:8px}
+.commentform input{min-width:0;flex:1}
+.statrow{display:flex;gap:25px;margin:16px 0}
+.stat strong{display:block;font-size:20px}
+.cover{height:100px;border-radius:12px;background:linear-gradient(120deg,#852cff,#ff168b,#00eaff)}
+.empty{text-align:center;padding:30px;color:var(--muted)}
+#message{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#26344c;padding:12px 18px;border-radius:10px;z-index:20;max-width:92%}
+.mobile{display:none}
+@media(max-width:650px){
+ .layout{display:block;padding:10px 10px 78px}aside{display:none}
+ .mobile{display:flex;position:fixed;bottom:0;left:0;right:0;background:#0b1020;border-top:1px solid var(--line);justify-content:space-around;z-index:8;padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+ .mobile button{background:none;border:0;color:var(--muted);font-size:11px;padding:7px 3px}
+ .mobile button.active{color:var(--cyan)}
+ .mobile span{display:block;font-size:18px;margin-bottom:3px}
+ header{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<section id="authScreen" class="authscreen">
+ <div class="authbox">
+  <div class="brand">YU<span>X</span>ORA</div>
+  <p class="muted">YOUR WORLD. YOUR FEED.</p>
+  <h2 id="authTitle">Create account</h2>
+  <form id="authForm">
+   <div id="nameBox"><label>Username</label><input id="username" class="field" maxlength="30" required placeholder="Your username"></div>
+   <label>Email</label><input id="email" class="field" type="email" autocomplete="email" required placeholder="you@example.com">
+   <label>Password</label>
+   <div class="row"><input id="password" class="field" type="password" minlength="6" autocomplete="current-password" required placeholder="At least 6 characters"><button class="btn" id="showPass" type="button">Show</button></div>
+   <button id="authSubmit" class="btn primary full" type="submit">Create account</button>
+  </form>
+  <p><span id="switchLabel" class="muted">Already registered?</span> <button id="switchAuth" class="btn">Log in</button></p>
+  <p class="small muted">Real online accounts use Supabase Authentication. If email confirmation is enabled, check your email before logging in.</p>
+ </div>
+</section>
+
+<div id="app" class="hidden">
+ <header><div class="brand">YU<span>X</span>ORA</div><button class="btn" onclick="logout()">Log out</button></header>
+ <div class="layout">
+  <aside>
+   <div class="panel"><strong id="sideName">Yuxora</strong><p class="muted small" id="sideHandle"></p></div>
+   <nav>
+    <button data-page="home" class="active" onclick="go('home')">⌂ Home</button>
+    <button data-page="explore" onclick="go('explore')">⌕ Explore</button>
+    <button data-page="favro" onclick="go('favro')">▶ Favro</button>
+    <button data-page="favee" onclick="go('favee')">▧ Favee</button>
+    <button data-page="profile" onclick="go('profile')">◉ Profile</button>
+    <button data-page="settings" onclick="go('settings')">⚙ Settings</button>
+   </nav>
+  </aside>
+
+  <main>
+   <section id="homePage">
+    <div class="panel">
+     <h2>Share your world</h2>
+     <form id="postForm">
+      <textarea id="postText" class="field" maxlength="1500" placeholder="What is happening?"></textarea>
+      <label>Attach a photo or video (max 20 MB)</label>
+      <input id="mediaFile" class="field" type="file" accept="image/*,video/mp4,video/webm,video/quicktime">
+      <div class="row between wrap">
+       <select id="postType" class="field" style="width:auto;flex:1">
+        <option value="Posts">Post</option><option value="Favro">Favro — short video</option><option value="Favee">Favee — photo</option>
+       </select>
+       <button id="publishBtn" class="btn primary" type="submit">Publish</button>
+      </div>
+     </form>
+    </div>
+    <div class="tabs">
+     <button class="tab active" data-feed="all" onclick="setFeed('all')">For You</button>
+     <button class="tab" data-feed="following" onclick="setFeed('following')">Following</button>
+     <button class="tab" data-feed="latest" onclick="setFeed('latest')">Latest</button>
+    </div>
+    <div id="feed"></div>
+   </section>
+
+   <section id="explorePage" class="hidden"><h2>Explore</h2><input id="search" class="field" placeholder="Search posts and creators"><div id="searchResults"></div></section>
+   <section id="favroPage" class="hidden"><h2>▶ Favro</h2><p class="muted">Short videos</p><div id="favroFeed"></div></section>
+   <section id="faveePage" class="hidden"><h2>▧ Favee</h2><p class="muted">Photos</p><div id="faveeFeed"></div></section>
+
+   <section id="profilePage" class="hidden">
+    <div class="panel"><div class="cover"></div><div class="row between" style="margin-top:-20px">
+     <div id="profileAvatar" class="avatar">Y</div><button class="btn" onclick="editProfile()">Edit profile</button>
+    </div>
+    <h2 id="profileName">Profile</h2><p id="profileHandle" class="muted"></p><p id="profileBio"></p>
+    <div class="statrow"><div class="stat"><strong id="postCount">0</strong>Posts</div><div class="stat"><strong id="followerCount">0</strong>Favere</div><div class="stat"><strong id="followingCount">0</strong>Following</div></div>
+    </div><h3>Your posts</h3><div id="myPosts"></div>
+   </section>
+
+   <section id="settingsPage" class="hidden">
+    <h2>Settings</h2><div class="panel">
+     <p><strong>Account</strong></p><p id="settingsEmail" class="muted"></p>
+     <p class="small muted">This website is connected to Supabase. Your posts and account are stored online.</p>
+     <button class="btn" onclick="resetPassword()">Send password reset email</button>
+     <hr><button class="btn" onclick="logout()">Log out</button>
+    </div>
+   </section>
+  </main>
+ </div>
+ <div class="mobile">
+  <button data-page="home" class="active" onclick="go('home')"><span>⌂</span>Home</button>
+  <button data-page="explore" onclick="go('explore')"><span>⌕</span>Explore</button>
+  <button data-page="favro" onclick="go('favro')"><span>▶</span>Favro</button>
+  <button data-page="favee" onclick="go('favee')"><span>▧</span>Favee</button>
+  <button data-page="profile" onclick="go('profile')"><span>◉</span>Profile</button>
+  <button data-page="settings" onclick="go('settings')"><span>⚙</span>Settings</button>
+ </div>
+</div>
+<div id="message" class="hidden"></div>
+
+<script>
+const SUPABASE_URL = "https://wwyiofpjuvadbxkfyfrs.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_GTtIz9Jkcq0Nxlo7TpvoDQ_woLC591k";
+const BUCKET = "yuxora-images";
+
+let supabaseClient;
+let currentUser = null;
+let profile = null;
+let feedMode = "all";
+let authMode = "signup";
+let postsCache = [];
+
+const $ = id => document.getElementById(id);
+const escapeHTML = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function message(text){
+ const el=$("message");el.textContent=text;el.classList.remove("hidden");
+ clearTimeout(window.messageTimer);
+ window.messageTimer=setTimeout(()=>el.classList.add("hidden"),4000);
+}
+function showError(error){
+ console.error(error);
+ message(error && error.message ? error.message : String(error));
+}
+function initClient(){
+ if(!window.supabase){message("Could not load Supabase library. Check your internet connection.");return false;}
+ if(!SUPABASE_URL.startsWith("https://") || !SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_")){
+  message("Check your Supabase project URL and publishable key.");return false;
+ }
+ supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+ return true;
+}
+
+function setAuthMode(mode){
+ authMode=mode;
+ const signup=mode==="signup";
+ $("authTitle").textContent=signup?"Create account":"Log in";
+ $("authSubmit").textContent=signup?"Create account":"Log in";
+ $("switchLabel").textContent=signup?"Already registered?":"New to Yuxora?";
+ $("switchAuth").textContent=signup?"Log in":"Sign up";
+ $("nameBox").classList.toggle("hidden",!signup);
+ $("username").required=signup;
+}
+$("switchAuth").onclick=()=>setAuthMode(authMode==="signup"?"login":"signup");
+$("showPass").onclick=()=>{
+ const p=$("password");p.type=p.type==="password"?"text":"password";
+ $("showPass").textContent=p.type==="password"?"Show":"Hide";
+};
+
+$("authForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!supabaseClient&&!initClient())return;
+ const email=$("email").value.trim().toLowerCase();
+ const password=$("password").value;
+ const username=$("username").value.trim();
+ const button=$("authSubmit");button.disabled=true;
+ try{
+  if(authMode==="signup"){
+   if(!/^[a-zA-Z0-9_ ]{2,30}$/.test(username)){
+    message("Username must be 2–30 letters, numbers, spaces or underscores.");return;
+   }
+   const {data,error}=await supabaseClient.auth.signUp({
+    email,password,options:{data:{username}}
+   });
+   if(error)throw error;
+   if(!data.session){
+    message("Account created if eligible. Check your email for confirmation, then log in.");
+    setAuthMode("login");return;
+   }
+   currentUser=data.user;
+   await ensureProfile(username);
+   await showApp();
+  }else{
+   const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+   if(error)throw error;
+   currentUser=data.user;
+   await ensureProfile((data.user.user_metadata||{}).username||"Creator");
+   await showApp();
+  }
+ }catch(err){showError(err);}
+ finally{button.disabled=false;}
+});
+
+async function ensureProfile(defaultName){
+ const {data,error}=await supabaseClient.from("yuxora_profiles")
+  .select("*").eq("id",currentUser.id).maybeSingle();
+ if(error)throw error;
+ if(data){profile=data;return;}
+ const clean=(defaultName||"Creator").trim().slice(0,30)||"Creator";
+ const {data:created,error:insertError}=await supabaseClient.from("yuxora_profiles")
+  .insert({id:currentUser.id,username:clean,bio:"Welcome to my Yuxora world."})
+  .select().single();
+ if(insertError)throw insertError;
+ profile=created;
+}
+
+async function showApp(){
+ $("authScreen").classList.add("hidden");
+ $("app").classList.remove("hidden");
+ await refreshAll();
+ go("home");
+}
+
+async function logout(){
+ if(supabaseClient)await supabaseClient.auth.signOut();
+ currentUser=null;profile=null;postsCache=[];
+ $("app").classList.add("hidden");$("authScreen").classList.remove("hidden");
+ $("password").value="";setAuthMode("login");
+}
+function go(page){
+ ["home","explore","favro","favee","profile","settings"].forEach(p=>{
+  $(p+"Page").classList.toggle("hidden",p!==page);
+ });
+ document.querySelectorAll("[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+ if(page==="explore")searchPosts();
+ if(page==="profile")renderProfile();
+}
+function setFeed(mode){
+ feedMode=mode;
+ document.querySelectorAll("[data-feed]").forEach(b=>b.classList.toggle("active",b.dataset.feed===mode));
+ renderFeed();
+}
+async function refreshAll(){
+ try{
+  const {data:myProfile,error:profileError}=await supabaseClient.from("yuxora_profiles").select("*").eq("id",currentUser.id).single();
+  if(profileError)throw profileError;
+  profile=myProfile;
+  const {data:posts,error:postsError}=await supabaseClient.from("yuxora_posts")
+   .select("*,yuxora_profiles(username,avatar_url),yuxora_likes(user_id)")
+   .order("created_at",{ascending:false}).limit(100);
+  if(postsError)throw postsError;
+  postsCache=posts||[];
+  $("sideName").textContent=profile.username;
+  $("sideHandle").textContent="@"+profile.username.toLowerCase().replace(/[^a-z0-9_]/g,"");
+  $("settingsEmail").textContent=currentUser.email||"";
+  renderFeed();renderSpecialFeeds();renderProfile();
+ }catch(err){showError(err);}
+}
+
+function creatorName(p){
+ return p.yuxora_profiles?.username || (p.user_id===currentUser?.id?profile?.username:"Yuxora Creator");
+}
+function postHTML(p){
+ const liked=(p.yuxora_likes||[]).some(l=>l.user_id===currentUser.id);
+ const own=p.user_id===currentUser.id;
+ const type=p.post_type||"Posts";
+ let media="";
+ if(p.media_url && type==="Favro")media='<video class="post-media" controls playsinline preload="metadata" src="'+escapeHTML(p.media_url)+'"></video>';
+ else if(p.media_url)media='<img class="post-media" loading="lazy" alt="Shared media" src="'+escapeHTML(p.media_url)+'">';
+ const likes=(p.yuxora_likes||[]).length;
+ return '<article class="post"><div class="post-head">'+
+  '<span class="avatar">'+escapeHTML((creatorName(p)||"Y").charAt(0).toUpperCase())+'</span>'+
+  '<div style="flex:1"><strong>'+escapeHTML(creatorName(p))+'</strong><div class="muted small">'+escapeHTML(type)+' · '+new Date(p.created_at).toLocaleString()+'</div></div>'+
+  (!own?'<button class="action" onclick="toggleFollow(\''+p.user_id+'\')">Favere</button>':'')+
+  '</div><div class="post-text">'+escapeHTML(p.text_content||"")+'</div>'+media+
+  '<div class="actions"><button class="action '+(liked?'liked':'')+'" onclick="toggleLike('+p.id+')">'+(liked?"♥":"♡")+' '+likes+'</button>'+
+  (own?'<button class="action" onclick="deletePost('+p.id+')">Delete</button>':'')+
+  '</div></article>';
+}
+function renderFeed(){
+ let posts=[...postsCache];
+ if(feedMode==="following")posts=posts.filter(p=>p.user_id===currentUser.id||p.is_followed_by_me);
+ if(feedMode==="latest")posts.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+ $("feed").innerHTML=posts.length?posts.map(postHTML).join(""):'<div class="panel empty">No posts yet. Create the first post!</div>';
+}
+function renderSpecialFeeds(){
+ const posts=[...postsCache];
+ const favro=posts.filter(p=>p.post_type==="Favro");
+ const favee=posts.filter(p=>p.post_type==="Favee");
+ $("favroFeed").innerHTML=favro.length?favro.map(postHTML).join(""):'<div class="panel empty">No Favro videos yet.</div>';
+ $("faveeFeed").innerHTML=favee.length?favee.map(postHTML).join(""):'<div class="panel empty">No Favee photos yet.</div>';
+}
+async function uploadMedia(file){
+ if(!file)return null;
+ if(file.size>20*1024*1024)throw new Error("Choose media smaller than 20 MB.");
+ if(!file.type.startsWith("image/")&&!file.type.startsWith("video/"))throw new Error("Choose a photo or video.");
+ const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+ const path=currentUser.id+"/"+Date.now()+"_"+safeName;
+ const {error}=await supabaseClient.storage.from(BUCKET).upload(path,file,{upsert:false,contentType:file.type});
+ if(error)throw error;
+ const {data}=supabaseClient.storage.from(BUCKET).getPublicUrl(path);
+ return data.publicUrl;
+}
+$("postForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ if(!currentUser)return;
+ const text=$("postText").value.trim();
+ const file=$("mediaFile").files[0];
+ const type=$("postType").value;
+ if(!text&&!file){message("Write something or select a photo/video.");return;}
+ if(type==="Favro"&&file&&!file.type.startsWith("video/")){message("Favro requires a video.");return;}
+ if(type==="Favee"&&file&&!file.type.startsWith("image/")){message("Favee requires a photo.");return;}
+ const button=$("publishBtn");button.disabled=true;button.textContent="Publishing...";
+ try{
+  const media_url=await uploadMedia(file);
+  const {error}=await supabaseClient.from("yuxora_posts").insert({
+   user_id:currentUser.id,text_content:text,post_type:type,media_url
+  });
+  if(error)throw error;
+  $("postText").value="";$("mediaFile").value="";
+  await refreshAll();go(type==="Favro"?"favro":type==="Favee"?"favee":"home");
+  message("Your post is online!");
+ }catch(err){showError(err);}
+ finally{button.disabled=false;button.textContent="Publish";}
+});
+
+async function toggleLike(postId){
+ try{
+  const post=postsCache.find(p=>p.id===postId);
+  const liked=(post?.yuxora_likes||[]).some(l=>l.user_id===currentUser.id);
+  if(liked){
+   const {error}=await supabaseClient.from("yuxora_likes").delete().eq("post_id",postId).eq("user_id",currentUser.id);
+   if(error)throw error;
+  }else{
+   const {error}=await supabaseClient.from("yuxora_likes").insert({post_id:postId,user_id:currentUser.id});
+   if(error)throw error;
+  }
+  await refreshAll();
+ }catch(err){showError(err);}
+}
+async function toggleFollow(userId){
+ try{
+  const {data,error}=await supabaseClient.from("yuxora_follows").select("*")
+   .eq("follower_id",currentUser.id).eq("following_id",userId).maybeSingle();
+  if(error)throw error;
+  if(data){
+   const result=await supabaseClient.from("yuxora_follows").delete()
+    .eq("follower_id",currentUser.id).eq("following_id",userId);
+   if(result.error)throw result.error;
+  }else{
+   const result=await supabaseClient.from("yuxora_follows").insert({follower_id:currentUser.id,following_id:userId});
+   if(result.error)throw result.error;
+  }
+  await refreshAll();message("Favere updated.");
+ }catch(err){showError(err);}
+}
+async function deletePost(id){
+ if(!confirm("Delete this post?"))return;
+ try{
+  const {error}=await supabaseClient.from("yuxora_posts").delete().eq("id",id).eq("user_id",currentUser.id);
+  if(error)throw error;
+  await refreshAll();message("Post deleted.");
+ }catch(err){showError(err);}
+}
+function renderProfile(){
+ if(!profile||!currentUser)return;
+ $("profileName").textContent=profile.username;
+ $("profileHandle").textConte
